@@ -1,0 +1,16 @@
+{
+  "name": "whatsapp-pdf",
+  "version": "1.0.0",
+  "description": "Uploader de imagens com Multer e gerador de PDF 8 por página",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
+    "pdfkit": "^0.15.0",
+    "uuid": "^9.0.1"
+  }
+}

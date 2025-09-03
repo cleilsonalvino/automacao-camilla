@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Gerar PDF de Prints (8 por página)</title>
+    <style>
+      :root {
+        --bg: #0f1115;
+        --card: #151924;
+        --txt: #e8ecf1;
+        --muted: #aab3c0;
+        --primary: #6aa3ff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: system-ui, Segoe UI, Roboto, Arial;
+        background: var(--bg);
+        color: var(--txt);
+      }
+      .wrap {
+        max-width: 920px;
+        margin: 40px auto;
+        padding: 0 16px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid #202a3a;
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 26px;
+      }
+      p {
+        color: var(--muted);
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      input[type="file"] {
+        padding: 10px;
+        background: #0e121a;
+        border: 1px dashed #2a3449;
+        color: var(--muted);
+        border-radius: 10px;
+      }
+      button {
+        background: var(--primary);
+        color: #0d1016;
+        border: none;
+        padding: 12px 16px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .status {
+        margin-top: 14px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .thumbs {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+        margin-top: 16px;
+      }
+      .thumb {
+        background: #0b0f16;
+        border: 1px solid #1c2435;
+        border-radius: 10px;
+        padding: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 160px;
+        overflow: hidden;
+      }
+      .thumb img {
+        max-width: 100%;
+        max-height: 100%;
+      }
+      .hr {
+        height: 1px;
+        background: #1b2434;
+        margin: 20px 0;
+      }
+      .hint {
+        font-size: 12px;
+        color: #8fa1bb;
+      }
+      .badge {
+        display: inline-block;
+        background: #0d1422;
+        border: 1px solid #23304b;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        color: #b7c4da;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>PDF de prints do WhatsApp (8 por página)</h1>
+        <p>
+          Envie suas imagens; elas serão salvas no servidor em um
+          <span class="badge">lote</span>. Ao final, clique para gerar o PDF.
+          Cada página A4 conterá 8 imagens (4 colunas × 2 linhas),
+          redimensionadas para 45 × 100 mm e centralizadas.
+        </p>
+
+        <div class="row" style="margin-top: 12px">
+          <input id="fileInput" type="file" accept="image/*" multiple />
+          <button id="btnUpload">Enviar imagens</button>
+          <button id="btnPDF" disabled>Gerar PDF do lote</button>
+        </div>
+        <div class="status" id="status">Nenhum lote iniciado.</div>
+
+        <div class="hr"></div>
+
+        <div class="hint">
+          Pré-visualização local (não é a resolução final do PDF):
+        </div>
+        <div id="thumbs" class="thumbs"></div>
+      </div>
+    </div>
+
+<script>
+  const fileInput = document.getElementById('fileInput');
+  const btnUpload = document.getElementById('btnUpload');
+  const btnPDF = document.getElementById('btnPDF');
+  const statusEl = document.getElementById('status');
+  const thumbs = document.getElementById('thumbs');
+
+  let batchId = localStorage.getItem('batchId') || null;
+  let pendingFiles = []; // acumula seleção local (antes de enviar)
+  const seenNames = new Set(); // controla duplicatas por nome
+
+  function setStatus(msg){ statusEl.textContent = msg; }
+  function refreshButtons(){
+    // só habilita upload se tivermos múltiplo de 8
+    btnUpload.disabled = pendingFiles.length === 0 || pendingFiles.length % 8 !== 0;
+    btnPDF.disabled = !batchId;
+  }
+
+  // acumular arquivos
+  fileInput.addEventListener('change', () => {
+    Array.from(fileInput.files).forEach(file => {
+      if (!seenNames.has(file.name)) {
+        pendingFiles.push(file);
+        seenNames.add(file.name);
+
+        const url = URL.createObjectURL(file);
+        const div = document.createElement('div');
+        div.className = 'thumb';
+        div.innerHTML = `<img src="${url}" /><div style="font-size:11px;color:#888">${file.name}</div>`;
+        thumbs.appendChild(div);
+      } else {
+        alert(`Arquivo "${file.name}" já foi selecionado e será ignorado.`);
+      }
+    });
+    fileInput.value = ""; // limpa input pra poder escolher de novo
+    refreshButtons();
+  });
+
+  // enviar apenas quando tivermos múltiplo de 8
+  btnUpload.addEventListener('click', async () => {
+    if (pendingFiles.length === 0 || pendingFiles.length % 8 !== 0) {
+      alert("É preciso ter múltiplos de 8 imagens acumuladas para enviar.");
+      return;
+    }
+
+    const fd = new FormData();
+    pendingFiles.forEach(f => fd.append('images', f));
+
+    setStatus('Enviando...');
+    const qp = batchId ? `?batchId=${encodeURIComponent(batchId)}` : '';
+    try {
+      const res = await fetch(`/upload${qp}`, { method: 'POST', body: fd });
+      if (!res.ok) throw new Error('Falha no upload');
+      const data = await res.json();
+
+      batchId = data.batchId;
+      localStorage.setItem('batchId', batchId);
+
+      setStatus(`Upload concluído. Lote: ${batchId} (+${data.acceptedCount} imagens, ${data.skippedCount} ignoradas).`);
+
+      // esvazia a fila local após envio
+      pendingFiles = [];
+      seenNames.clear();
+      thumbs.innerHTML = '';
+      refreshButtons();
+    } catch (e) {
+      console.error(e);
+      setStatus('Erro ao enviar arquivos.');
+    }
+  });
+
+  btnPDF.addEventListener('click', () => {
+    if (batchId) window.location.href = `/pdf/${encodeURIComponent(batchId)}`;
+  });
+
+  if (batchId) setStatus(`Lote atual: ${batchId}. Selecione imagens (em múltiplos de 8) e envie.`);
+  refreshButtons();
+</script>
+
+  </body>
+</html>
