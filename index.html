@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Gerar PDF de Prints (local, sem servidor)</title>
+    <style>
+      :root {
+        --bg: #0f1115;
+        --card: #151924;
+        --txt: #e8ecf1;
+        --muted: #aab3c0;
+        --primary: #6aa3ff;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, Segoe UI, Roboto, Arial;
+        background: var(--bg);
+        color: var(--txt);
+      }
+      .wrap { max-width: 920px; margin: 40px auto; padding: 0 16px; }
+      .card {
+        background: var(--card);
+        border: 1px solid #202a3a;
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 6px 24px rgba(0,0,0,.3);
+      }
+      h1 { margin: 0 0 6px; font-size: 26px; }
+      p { color: var(--muted); }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start; /* evita sobreposição vertical */
+        flex-wrap: wrap;
+      }
+      input[type="file"] {
+        display: inline-block;
+        width: auto;            /* não ocupa toda a linha */
+        max-width: 260px;
+        flex: 0 0 auto;         /* não cresce no flex */
+        padding: 10px;
+        background: #0e121a;
+        border: 1px dashed #2a3449;
+        color: var(--muted);
+        border-radius: 10px;
+        position: relative;
+        z-index: 1;
+        cursor: pointer;
+      }
+      button {
+        background: var(--primary);
+        color: #0d1016;
+        border: none;
+        padding: 12px 16px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-weight: 700;
+        position: relative;
+        z-index: 2; /* garante clique acima do input */
+      }
+      button:disabled { opacity: .5; cursor: not-allowed; }
+      .status { margin-top: 14px; font-size: 14px; color: var(--muted); }
+      .thumbs {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 10px;
+        margin-top: 16px;
+      }
+      .thumb {
+        background: #0b0f16;
+        border: 1px solid #1c2435;
+        border-radius: 10px;
+        padding: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 160px;
+        overflow: hidden;
+        position: relative;
+      }
+      .thumb img { max-width: 100%; max-height: 100%; }
+      .thumb .name {
+        position: absolute; left: 6px; right: 6px; bottom: 6px;
+        font-size: 11px; color: #9fb1cc; background: rgba(0,0,0,.35);
+        padding: 2px 4px; border-radius: 6px; text-overflow: ellipsis;
+        white-space: nowrap; overflow: hidden;
+      }
+      .hr { height: 1px; background: #1b2434; margin: 20px 0; }
+      .hint { font-size: 12px; color: #8fa1bb; }
+      .badge {
+        display: inline-block; background: #0d1422; border: 1px solid #23304b;
+        padding: 6px 10px; border-radius: 999px; font-size: 12px; color: #b7c4da;
+      }
+      .mini { font-size: 12px; opacity: .9; }
+      .ghost { opacity: .7; }
+    </style>
+    <!-- jsPDF (client-side PDF) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>PDF de prints do WhatsApp (local, 8 por página)</h1>
+        <p>
+          Tudo acontece <strong>no seu navegador</strong>, sem servidor.
+          Selecione imagens quantas vezes quiser; o app acumula as seleções em um
+          <span class="badge">lote temporário</span>. Quando estiver pronto, gere o PDF.
+          Cada página A4 terá até 8 imagens (4 colunas × 2 linhas),
+          redimensionadas para <strong>45 × 100 mm</strong> e centralizadas.
+        </p>
+
+        <div class="row" style="margin-top: 12px">
+          <input id="fileInput" type="file" accept="image/*" multiple />
+          <button id="btnClear" class="ghost">Limpar lote</button>
+          <button id="btnPDF">Gerar PDF</button>
+        </div>
+        <div class="status" id="status">Nenhuma imagem no lote.</div>
+
+        <div class="hr"></div>
+
+        <div class="hint">Pré-visualização local (não é a resolução final do PDF):</div>
+        <div id="thumbs" class="thumbs"></div>
+
+        <div class="hr"></div>
+        <div class="mini">
+          Dedupe: se você selecionar o mesmo arquivo (mesmo nome) novamente, ele é ignorado.
+          Nada é enviado para a internet. Fechar a aba limpa tudo da memória.
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const { jsPDF } = window.jspdf;
+
+      const fileInput = document.getElementById("fileInput");
+      const btnPDF   = document.getElementById("btnPDF");
+      const btnClear = document.getElementById("btnClear");
+      const statusEl = document.getElementById("status");
+      const thumbs   = document.getElementById("thumbs");
+
+      // garante que estão habilitados
+      btnPDF.disabled = false;
+      btnClear.disabled = false;
+
+      // Estado em memória:
+      // items: [{ name, type, dataURL }]
+      const items = [];
+      const seenNames = new Set();
+
+      function setStatus(msg) { statusEl.textContent = msg; }
+      function refreshStatus() {
+        if (items.length === 0) setStatus("Nenhuma imagem no lote.");
+        else setStatus(`Imagens no lote: ${items.length}. Gerar PDF criará ${Math.ceil(items.length / 8)} página(s).`);
+      }
+
+      function addThumb(src, name) {
+        const div = document.createElement("div");
+        div.className = "thumb";
+        div.innerHTML = `<img src="${src}" alt=""><div class="name" title="${name}">${name}</div>`;
+        thumbs.appendChild(div);
+      }
+
+      function fileToDataURL(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      fileInput.addEventListener("change", async () => {
+        const files = Array.from(fileInput.files || []);
+        for (const f of files) {
+          if (seenNames.has(f.name)) {
+            alert(`Arquivo "${f.name}" já foi adicionado e será ignorado.`);
+            continue;
+          }
+          try {
+            const dataURL = await fileToDataURL(f);
+            items.push({ name: f.name, type: f.type || "image/jpeg", dataURL });
+            seenNames.add(f.name);
+            addThumb(dataURL, f.name);
+          } catch (e) {
+            console.error(e);
+            alert(`Falha ao ler o arquivo: ${f.name}`);
+          }
+        }
+        fileInput.value = ""; // permite nova seleção mantendo as anteriores
+        refreshStatus();
+      });
+
+      btnClear.addEventListener("click", () => {
+        if (items.length === 0) return;
+        if (!confirm("Limpar todas as imagens do lote?")) return;
+        items.splice(0, items.length);
+        seenNames.clear();
+        thumbs.innerHTML = "";
+        refreshStatus();
+      });
+
+      btnPDF.addEventListener("click", () => {
+        if (items.length === 0) {
+          alert("Adicione pelo menos 1 imagem.");
+          return;
+        }
+        try {
+          // jsPDF em milímetros, A4 retrato
+          const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+
+          // Layout (mm)
+          const A4W = 210, A4H = 297;
+          const COLS = 4, ROWS = 2;
+          const IMG_W = 45.0, IMG_H = 100.0;
+          const GAP_X = 5.0, GAP_Y = 5.0;
+          const perPage = COLS * ROWS;
+
+          // Centralização do grid no A4
+          const gridW = IMG_W * COLS + GAP_X * (COLS - 1); // 195
+          const gridH = IMG_H * ROWS + GAP_Y * (ROWS - 1); // 205
+          const startX = (A4W - gridW) / 2; // 7.5
+          const startY = (A4H - gridH) / 2; // 46
+
+          // Adiciona 8 por página
+          items.forEach((item, i) => {
+            if (i > 0 && i % perPage === 0) doc.addPage();
+
+            const local = i % perPage;
+            const row = Math.floor(local / COLS);
+            const col = local % COLS;
+
+            const x = startX + col * (IMG_W + GAP_X);
+            const y = startY + row * (IMG_H + GAP_Y);
+
+            const format = item.type && item.type.includes("png") ? "PNG" : "JPEG";
+            doc.addImage(item.dataURL, format, x, y, IMG_W, IMG_H);
+          });
+
+          const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+          doc.save(`conversas-${stamp}.pdf`);
+        } catch (e) {
+          console.error(e);
+          alert("Ocorreu um erro ao gerar o PDF.");
+        }
+      });
+
+      refreshStatus();
+    </script>
+  </body>
+</html>
