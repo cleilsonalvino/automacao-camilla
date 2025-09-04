@@ -1,252 +1,305 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Gerar PDF de Prints (local, sem servidor)</title>
-    <style>
-      :root {
-        --bg: #0f1115;
-        --card: #151924;
-        --txt: #e8ecf1;
-        --muted: #aab3c0;
-        --primary: #6aa3ff;
-      }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        font-family: system-ui, Segoe UI, Roboto, Arial;
-        background: var(--bg);
-        color: var(--txt);
-      }
-      .wrap { max-width: 920px; margin: 40px auto; padding: 0 16px; }
-      .card {
-        background: var(--card);
-        border: 1px solid #202a3a;
-        border-radius: 14px;
-        padding: 20px;
-        box-shadow: 0 6px 24px rgba(0,0,0,.3);
-      }
-      h1 { margin: 0 0 6px; font-size: 26px; }
-      p { color: var(--muted); }
-      .row {
-        display: flex;
-        gap: 12px;
-        align-items: flex-start; /* evita sobreposição vertical */
-        flex-wrap: wrap;
-      }
-      input[type="file"] {
-        display: inline-block;
-        width: auto;            /* não ocupa toda a linha */
-        max-width: 260px;
-        flex: 0 0 auto;         /* não cresce no flex */
-        padding: 10px;
-        background: #0e121a;
-        border: 1px dashed #2a3449;
-        color: var(--muted);
-        border-radius: 10px;
-        position: relative;
-        z-index: 1;
-        cursor: pointer;
-      }
-      button {
-        background: var(--primary);
-        color: #0d1016;
-        border: none;
-        padding: 12px 16px;
-        border-radius: 12px;
-        cursor: pointer;
-        font-weight: 700;
-        position: relative;
-        z-index: 2; /* garante clique acima do input */
-      }
-      button:disabled { opacity: .5; cursor: not-allowed; }
-      .status { margin-top: 14px; font-size: 14px; color: var(--muted); }
-      .thumbs {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 10px;
-        margin-top: 16px;
-      }
-      .thumb {
-        background: #0b0f16;
-        border: 1px solid #1c2435;
-        border-radius: 10px;
-        padding: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        height: 160px;
-        overflow: hidden;
-        position: relative;
-      }
-      .thumb img { max-width: 100%; max-height: 100%; }
-      .thumb .name {
-        position: absolute; left: 6px; right: 6px; bottom: 6px;
-        font-size: 11px; color: #9fb1cc; background: rgba(0,0,0,.35);
-        padding: 2px 4px; border-radius: 6px; text-overflow: ellipsis;
-        white-space: nowrap; overflow: hidden;
-      }
-      .hr { height: 1px; background: #1b2434; margin: 20px 0; }
-      .hint { font-size: 12px; color: #8fa1bb; }
-      .badge {
-        display: inline-block; background: #0d1422; border: 1px solid #23304b;
-        padding: 6px 10px; border-radius: 999px; font-size: 12px; color: #b7c4da;
-      }
-      .mini { font-size: 12px; opacity: .9; }
-      .ghost { opacity: .7; }
-    </style>
-    <!-- jsPDF (client-side PDF) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  </head>
-  <body>
-    <div class="wrap">
-      <div class="card">
-        <h1>PDF de prints do WhatsApp (local, 8 por página)</h1>
-        <p>
-          Tudo acontece <strong>no seu navegador</strong>, sem servidor.
-          Selecione imagens quantas vezes quiser; o app acumula as seleções em um
-          <span class="badge">lote temporário</span>. Quando estiver pronto, gere o PDF.
-          Cada página A4 terá até 8 imagens (4 colunas × 2 linhas),
-          redimensionadas para <strong>45 × 100 mm</strong> e centralizadas.
-        </p>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Gerar PDF de Prints — Lotes locais (sem servidor)</title>
+<style>
+  :root {
+    --bg:#0f1115; --panel:#0b0f16; --card:#151924; --txt:#e8ecf1; --muted:#aab3c0;
+    --primary:#6aa3ff; --border:#202a3a; --accent:#23304b; --danger:#ff6a6a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--txt)}
+  .app{display:grid;grid-template-columns:280px 1fr;min-height:100dvh}
+  /* Sidebar */
+  .side{border-right:1px solid var(--border);background:var(--panel);padding:16px;display:flex;flex-direction:column;gap:12px}
+  .brand{font-weight:800;letter-spacing:.3px}
+  .btn{
+    background:var(--primary);color:#0d1016;border:none;padding:10px 12px;border-radius:10px;cursor:pointer;font-weight:700
+  }
+  .btn.ghost{background:transparent;border:1px solid var(--accent);color:#b7c4da}
+  .btn.danger{background:var(--danger);color:#1a0d0d}
+  .list{display:flex;flex-direction:column;gap:8px;overflow:auto}
+  .lote{
+    background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;cursor:pointer
+  }
+  .lote.active{outline:2px solid var(--primary)}
+  .lote h4{margin:0 0 4px;font-size:14px;display:flex;align-items:center;gap:6px}
+  .meta{font-size:12px;color:var(--muted)}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  /* Main */
+  .main{padding:16px 20px}
+  .card{
+    background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:16px
+  }
+  .title{display:flex;align-items:center;gap:10px;justify-content:space-between;margin-bottom:8px}
+  input[type="file"]{
+    display:inline-block;width:auto;max-width:320px;flex:0 0 auto;padding:10px;background:#0e121a;
+    border:1px dashed #2a3449;color:var(--muted);border-radius:10px;cursor:pointer;position:relative;z-index:1
+  }
+  .grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px
+  }
+  .thumb{
+    background:#0b0f16;border:1px solid #1c2435;border-radius:12px;height:180px;overflow:hidden;position:relative;
+    display:flex;align-items:center;justify-content:center
+  }
+  .thumb img{max-width:100%;max-height:100%}
+  .cap{
+    position:absolute;left:6px;right:6px;bottom:6px;font-size:11px;color:#c2d1ea;background:rgba(0,0,0,.35);
+    padding:2px 4px;border-radius:6px;text-overflow:ellipsis;white-space:nowrap;overflow:hidden
+  }
+  .x{
+    position:absolute;top:6px;right:6px;background:rgba(0,0,0,.5);border:1px solid #364766;border-radius:8px;
+    padding:2px 6px;font-size:12px;color:#e8ecf1;cursor:pointer
+  }
+  .drop{
+    border:1px dashed #2a3449;border-radius:12px;padding:14px;text-align:center;color:#8fa1bb
+  }
+  .drop.drag{background:#0e1422}
+  .hint{font-size:12px;color:#8fa1bb}
+  .tools{display:flex;gap:8px;flex-wrap:wrap}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="side">
+    <div class="brand">Lotes de Prints (local)</div>
+    <button class="btn" id="addLote">+ Novo lote</button>
+    <div class="list" id="lotesList"></div>
+  </aside>
 
-        <div class="row" style="margin-top: 12px">
-          <input id="fileInput" type="file" accept="image/*" multiple />
-          <button id="btnClear" class="ghost">Limpar lote</button>
-          <button id="btnPDF">Gerar PDF</button>
+  <!-- Main -->
+  <main class="main">
+    <div class="card">
+      <div class="title">
+        <div>
+          <strong id="loteTitle">Selecione um lote</strong>
+          <div class="hint" id="loteMeta">Nenhum lote ativo.</div>
         </div>
-        <div class="status" id="status">Nenhuma imagem no lote.</div>
-
-        <div class="hr"></div>
-
-        <div class="hint">Pré-visualização local (não é a resolução final do PDF):</div>
-        <div id="thumbs" class="thumbs"></div>
-
-        <div class="hr"></div>
-        <div class="mini">
-          Dedupe: se você selecionar o mesmo arquivo (mesmo nome) novamente, ele é ignorado.
-          Nada é enviado para a internet. Fechar a aba limpa tudo da memória.
+        <div class="tools">
+          <button class="btn ghost" id="renameLote" disabled>Renomear</button>
+          <button class="btn danger" id="deleteLote" disabled>Excluir lote</button>
         </div>
       </div>
+      <div class="row" style="align-items:flex-start;margin-bottom:8px">
+        <input id="fileInput" type="file" accept="image/*" multiple disabled />
+        <button class="btn ghost" id="clearLote" disabled>Limpar imagens</button>
+        <button class="btn" id="genPDF" disabled>Gerar PDF do lote</button>
+      </div>
+      <div class="drop" id="dropzone">Arraste e solte imagens aqui para adicionar ao lote selecionado</div>
     </div>
 
-    <script>
-      const { jsPDF } = window.jspdf;
+    <div class="card">
+      <div style="margin-bottom:6px"><strong>Imagens do lote</strong></div>
+      <div class="hint" style="margin-bottom:10px">Clique no “×” para remover. Duplicatas por <em>nome</em> são ignoradas dentro do mesmo lote.</div>
+      <div id="grid" class="grid"></div>
+    </div>
+  </main>
+</div>
 
-      const fileInput = document.getElementById("fileInput");
-      const btnPDF   = document.getElementById("btnPDF");
-      const btnClear = document.getElementById("btnClear");
-      const statusEl = document.getElementById("status");
-      const thumbs   = document.getElementById("thumbs");
+<script>
+  const { jsPDF } = window.jspdf;
 
-      // garante que estão habilitados
-      btnPDF.disabled = false;
-      btnClear.disabled = false;
+  // Estado em memória
+  let lotes = []; // [{id, name, items:[{name,type,dataURL}], seen:Set}]
+  let activeId = null;
 
-      // Estado em memória:
-      // items: [{ name, type, dataURL }]
-      const items = [];
-      const seenNames = new Set();
+  // UI refs
+  const addLoteBtn   = document.getElementById('addLote');
+  const lotesListEl  = document.getElementById('lotesList');
+  const loteTitleEl  = document.getElementById('loteTitle');
+  const loteMetaEl   = document.getElementById('loteMeta');
+  const renameBtn    = document.getElementById('renameLote');
+  const deleteBtn    = document.getElementById('deleteLote');
+  const fileInput    = document.getElementById('fileInput');
+  const clearBtn     = document.getElementById('clearLote');
+  const genPDFBtn    = document.getElementById('genPDF');
+  const gridEl       = document.getElementById('grid');
+  const dropzone     = document.getElementById('dropzone');
 
-      function setStatus(msg) { statusEl.textContent = msg; }
-      function refreshStatus() {
-        if (items.length === 0) setStatus("Nenhuma imagem no lote.");
-        else setStatus(`Imagens no lote: ${items.length}. Gerar PDF criará ${Math.ceil(items.length / 8)} página(s).`);
-      }
+  function uid(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
 
-      function addThumb(src, name) {
-        const div = document.createElement("div");
-        div.className = "thumb";
-        div.innerHTML = `<img src="${src}" alt=""><div class="name" title="${name}">${name}</div>`;
-        thumbs.appendChild(div);
-      }
+  function ensureActiveUI(enabled){
+    fileInput.disabled = !enabled;
+    clearBtn.disabled  = !enabled;
+    genPDFBtn.disabled = !enabled;
+    renameBtn.disabled = !enabled;
+    deleteBtn.disabled = !enabled;
+    dropzone.classList.toggle('disabled', !enabled);
+  }
 
-      function fileToDataURL(file) {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-      }
+  function renderSidebar(){
+    lotesListEl.innerHTML = '';
+    lotes.forEach(l => {
+      const div = document.createElement('div');
+      div.className = 'lote' + (l.id===activeId ? ' active' : '');
+      div.onclick = () => { activeId = l.id; renderAll(); };
+      div.innerHTML = `
+        <h4>${l.name}</h4>
+        <div class="meta">${l.items.length} imagem(ns)</div>
+      `;
+      lotesListEl.appendChild(div);
+    });
+  }
 
-      fileInput.addEventListener("change", async () => {
-        const files = Array.from(fileInput.files || []);
-        for (const f of files) {
-          if (seenNames.has(f.name)) {
-            alert(`Arquivo "${f.name}" já foi adicionado e será ignorado.`);
-            continue;
-          }
-          try {
-            const dataURL = await fileToDataURL(f);
-            items.push({ name: f.name, type: f.type || "image/jpeg", dataURL });
-            seenNames.add(f.name);
-            addThumb(dataURL, f.name);
-          } catch (e) {
-            console.error(e);
-            alert(`Falha ao ler o arquivo: ${f.name}`);
-          }
-        }
-        fileInput.value = ""; // permite nova seleção mantendo as anteriores
-        refreshStatus();
+  function renderMain(){
+    const lote = lotes.find(l=>l.id===activeId);
+    if(!lote){
+      loteTitleEl.textContent = 'Selecione um lote';
+      loteMetaEl.textContent  = 'Nenhum lote ativo.';
+      gridEl.innerHTML = '';
+      ensureActiveUI(false);
+      return;
+    }
+    loteTitleEl.textContent = lote.name;
+    loteMetaEl.textContent  = `Imagens no lote: ${lote.items.length}. PDF: até 8 por página (4×2), 45×100 mm.`;
+    ensureActiveUI(true);
+
+    gridEl.innerHTML = '';
+    lote.items.forEach((it, idx)=>{
+      const card = document.createElement('div');
+      card.className = 'thumb';
+      card.innerHTML = `
+        <img src="${it.dataURL}" alt="">
+        <div class="cap" title="${it.name}">${it.name}</div>
+        <div class="x" title="Remover" data-idx="${idx}">×</div>
+      `;
+      gridEl.appendChild(card);
+    });
+
+    // remover imagem
+    gridEl.querySelectorAll('.x').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        const i = +e.currentTarget.dataset.idx;
+        lote.seen.delete(lote.items[i].name);
+        lote.items.splice(i,1);
+        renderAll();
       });
+    });
+  }
 
-      btnClear.addEventListener("click", () => {
-        if (items.length === 0) return;
-        if (!confirm("Limpar todas as imagens do lote?")) return;
-        items.splice(0, items.length);
-        seenNames.clear();
-        thumbs.innerHTML = "";
-        refreshStatus();
-      });
+  function renderAll(){ renderSidebar(); renderMain(); }
 
-      btnPDF.addEventListener("click", () => {
-        if (items.length === 0) {
-          alert("Adicione pelo menos 1 imagem.");
-          return;
-        }
-        try {
-          // jsPDF em milímetros, A4 retrato
-          const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  // Ações de lotes
+  addLoteBtn.addEventListener('click', ()=>{
+    const n = lotes.length+1;
+    const id = uid();
+    lotes.push({ id, name:`Lote ${n}`, items:[], seen:new Set() });
+    activeId = id;
+    renderAll();
+  });
 
-          // Layout (mm)
-          const A4W = 210, A4H = 297;
-          const COLS = 4, ROWS = 2;
-          const IMG_W = 45.0, IMG_H = 100.0;
-          const GAP_X = 5.0, GAP_Y = 5.0;
-          const perPage = COLS * ROWS;
+  renameBtn.addEventListener('click', ()=>{
+    const lote = lotes.find(l=>l.id===activeId); if(!lote) return;
+    const nn = prompt('Novo nome do lote:', lote.name);
+    if(nn && nn.trim()){ lote.name = nn.trim(); renderAll(); }
+  });
 
-          // Centralização do grid no A4
-          const gridW = IMG_W * COLS + GAP_X * (COLS - 1); // 195
-          const gridH = IMG_H * ROWS + GAP_Y * (ROWS - 1); // 205
-          const startX = (A4W - gridW) / 2; // 7.5
-          const startY = (A4H - gridH) / 2; // 46
+  deleteBtn.addEventListener('click', ()=>{
+    const i = lotes.findIndex(l=>l.id===activeId);
+    if(i<0) return;
+    if(!confirm('Excluir este lote? Esta ação não pode ser desfeita.')) return;
+    lotes.splice(i,1);
+    activeId = lotes[0]?.id ?? null;
+    renderAll();
+  });
 
-          // Adiciona 8 por página
-          items.forEach((item, i) => {
-            if (i > 0 && i % perPage === 0) doc.addPage();
+  clearBtn.addEventListener('click', ()=>{
+    const lote = lotes.find(l=>l.id===activeId); if(!lote) return;
+    if(!lote.items.length) return;
+    if(!confirm('Remover todas as imagens deste lote?')) return;
+    lote.items = [];
+    lote.seen.clear();
+    renderAll();
+  });
 
-            const local = i % perPage;
-            const row = Math.floor(local / COLS);
-            const col = local % COLS;
+  // Adicionar imagens (arquivo)
+  fileInput.addEventListener('change', async ()=>{
+    const lote = lotes.find(l=>l.id===activeId); if(!lote) return;
+    const files = Array.from(fileInput.files||[]);
+    await addFilesToLote(lote, files);
+    fileInput.value = '';
+  });
 
-            const x = startX + col * (IMG_W + GAP_X);
-            const y = startY + row * (IMG_H + GAP_Y);
+  // Drag & drop
+  ;['dragenter','dragover'].forEach(evt=>{
+    dropzone.addEventListener(evt,(e)=>{ e.preventDefault(); e.stopPropagation(); dropzone.classList.add('drag'); });
+  });
+  ;['dragleave','drop'].forEach(evt=>{
+    dropzone.addEventListener(evt,(e)=>{ e.preventDefault(); e.stopPropagation(); dropzone.classList.remove('drag'); });
+  });
+  dropzone.addEventListener('drop', async (e)=>{
+    const lote = lotes.find(l=>l.id===activeId); if(!lote) return;
+    const files = Array.from(e.dataTransfer.files||[]).filter(f=>f.type.startsWith('image/'));
+    await addFilesToLote(lote, files);
+  });
 
-            const format = item.type && item.type.includes("png") ? "PNG" : "JPEG";
-            doc.addImage(item.dataURL, format, x, y, IMG_W, IMG_H);
-          });
+  // Util: arquivo -> dataURL
+  function fileToDataURL(file){
+    return new Promise((resolve,reject)=>{
+      const r = new FileReader();
+      r.onload = ()=>resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
 
-          const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
-          doc.save(`conversas-${stamp}.pdf`);
-        } catch (e) {
-          console.error(e);
-          alert("Ocorreu um erro ao gerar o PDF.");
-        }
-      });
+  async function addFilesToLote(lote, files){
+    let skipped=0, added=0;
+    for(const f of files){
+      if(!f.type.startsWith('image/')) continue;
+      if(lote.seen.has(f.name)){ skipped++; continue; }
+      try{
+        const dataURL = await fileToDataURL(f);
+        lote.items.push({ name:f.name, type:f.type||'image/jpeg', dataURL });
+        lote.seen.add(f.name);
+        added++;
+      }catch{ /* ignore */ }
+    }
+    if(skipped) alert(`${skipped} arquivo(s) ignorado(s) por nome duplicado no lote.`);
+    renderAll();
+  }
 
-      refreshStatus();
-    </script>
-  </body>
+  // PDF por lote
+  genPDFBtn.addEventListener('click', ()=>{
+    const lote = lotes.find(l=>l.id===activeId); if(!lote) return;
+    if(!lote.items.length){ alert('Este lote está vazio.'); return; }
+
+    const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+    const A4W=210, A4H=297, COLS=4, ROWS=2, IMG_W=45, IMG_H=100, GAP_X=5, GAP_Y=5;
+    const perPage = COLS*ROWS;
+    const gridW = IMG_W*COLS + GAP_X*(COLS-1);   // 195
+    const gridH = IMG_H*ROWS + GAP_Y*(ROWS-1);   // 205
+    const startX = (A4W-gridW)/2;                // 7.5
+    const startY = (A4H-gridH)/2;                // 46
+
+    lote.items.forEach((item,i)=>{
+      if(i>0 && i%perPage===0) doc.addPage();
+      const local = i%perPage;
+      const row = Math.floor(local/COLS);
+      const col = local%COLS;
+      const x = startX + col*(IMG_W+GAP_X);
+      const y = startY + row*(IMG_H+GAP_Y);
+      const fmt = (item.type||'').includes('png') ? 'PNG' : 'JPEG';
+      doc.addImage(item.dataURL, fmt, x, y, IMG_W, IMG_H);
+    });
+
+    const safeName = lote.name.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'');
+    const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    doc.save(`${safeName||'lote'}-${stamp}.pdf`);
+  });
+
+  // app inicial: cria um lote vazio
+  (function init(){
+    const id = uid();
+    lotes = [{ id, name:'Lote 1', items:[], seen:new Set() }];
+    activeId = id;
+    renderAll();
+  })();
+</script>
+</body>
 </html>
