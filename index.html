@@ -10,7 +10,33 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 <body>
-<div class="app">
+
+<!-- 🔝 Landing Page -->
+<section class="landing" id="home">
+  <div class="hero">
+    <h1>Transforme seus prints e fotos em PDFs com poucos cliques</h1>
+    <p>Organize, una e baixe seus prints em PDF de forma rápida, local e segura. Nenhum dado é enviado para servidores externos.</p>
+    <a href="#app" class="btn-landing">Começar agora</a>
+  </div>
+
+  <div class="features">
+    <div class="feature">
+      <h3>💡 Simples e rápido</h3>
+      <p>Arraste suas imagens, escolha o layout e gere um PDF em segundos.</p>
+    </div>
+    <div class="feature">
+      <h3>🔒 100% local</h3>
+      <p>Todo o processamento é feito no seu navegador. Suas imagens nunca saem do seu computador.</p>
+    </div>
+    <div class="feature">
+      <h3>⚙️ Flexível</h3>
+      <p>Escolha quantas imagens por página e organize seus arquivos como quiser.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 🔽 Aplicativo -->
+<div class="app" id="app">
   <aside class="side">
     <div class="brand">📸 Lotes de Prints</div>
     <button class="btn" id="addLote">+ Novo lote</button>
@@ -62,13 +88,17 @@
   </main>
 </div>
 
-<!-- Modal de pré-visualização -->
+<!-- ⚙️ Modal de pré-visualização -->
 <div id="previewModal" class="modal">
   <div class="modal-content">
     <span id="closePreview" class="close">&times;</span>
     <iframe id="pdfPreview" frameborder="0"></iframe>
   </div>
 </div>
+
+<footer class="footer">
+  <p>© 2025 — <strong>PrintJoiner</strong> | Desenvolvido com ❤️ por você</p>
+</footer>
 
 <script src="script.js"></script>
 </body>
