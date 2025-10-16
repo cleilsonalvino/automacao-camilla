@@ -1,105 +1,136 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Gerador de PDFs de Prints — v2.0</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-</head>
-<body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Gerador de PDFs de Prints — v2.0</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script
+      async
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2315578510011966"
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <body>
+    <!-- 🔝 Landing Page -->
+    <section class="landing" id="home">
+      <div class="hero">
+        <h1>Transforme seus prints e fotos em PDFs com poucos cliques</h1>
+        <p>
+          Organize, una e baixe seus prints em PDF de forma rápida, local e
+          segura. Nenhum dado é enviado para servidores externos.
+        </p>
+        <a href="#app" class="btn-landing">Começar agora</a>
+      </div>
 
-<!-- 🔝 Landing Page -->
-<section class="landing" id="home">
-  <div class="hero">
-    <h1>Transforme seus prints e fotos em PDFs com poucos cliques</h1>
-    <p>Organize, una e baixe seus prints em PDF de forma rápida, local e segura. Nenhum dado é enviado para servidores externos.</p>
-    <a href="#app" class="btn-landing">Começar agora</a>
-  </div>
-
-  <div class="features">
-    <div class="feature">
-      <h3>💡 Simples e rápido</h3>
-      <p>Arraste suas imagens, escolha o layout e gere um PDF em segundos.</p>
-    </div>
-    <div class="feature">
-      <h3>🔒 100% local</h3>
-      <p>Todo o processamento é feito no seu navegador. Suas imagens nunca saem do seu computador.</p>
-    </div>
-    <div class="feature">
-      <h3>⚙️ Flexível</h3>
-      <p>Escolha quantas imagens por página e organize seus arquivos como quiser.</p>
-    </div>
-  </div>
-</section>
-
-<!-- 🔽 Aplicativo -->
-<div class="app" id="app">
-  <aside class="side">
-    <div class="brand">📸 Lotes de Prints</div>
-    <button class="btn" id="addLote">+ Novo lote</button>
-    <div class="list" id="lotesList"></div>
-  </aside>
-
-  <main class="main">
-    <div class="card">
-      <div class="title">
-        <div>
-          <strong id="loteTitle">Selecione um lote</strong>
-          <div class="hint" id="loteMeta">Nenhum lote ativo.</div>
+      <div class="features">
+        <div class="feature">
+          <h3>💡 Simples e rápido</h3>
+          <p>
+            Arraste suas imagens, escolha o layout e gere um PDF em segundos.
+          </p>
         </div>
-        <div class="tools">
-          <button class="btn ghost" id="renameLote" disabled>Renomear</button>
-          <button class="btn danger" id="deleteLote" disabled>Excluir</button>
+        <div class="feature">
+          <h3>🔒 100% local</h3>
+          <p>
+            Todo o processamento é feito no seu navegador. Suas imagens nunca
+            saem do seu computador.
+          </p>
+        </div>
+        <div class="feature">
+          <h3>⚙️ Flexível</h3>
+          <p>
+            Escolha quantas imagens por página e organize seus arquivos como
+            quiser.
+          </p>
         </div>
       </div>
+    </section>
 
-      <div class="row" style="align-items:flex-start;margin-bottom:8px">
-        <input id="fileInput" type="file" accept="image/*" multiple disabled />
-        <button class="btn ghost" id="clearLote" disabled>Limpar</button>
-        <button class="btn" id="genPDF" disabled>Gerar PDF</button>
-        <button class="btn ghost" id="downloadZIP" disabled>Baixar ZIP</button>
-      </div>
+    <!-- 🔽 Aplicativo -->
+    <div class="app" id="app">
+      <aside class="side">
+        <div class="brand">📸 Lotes de Prints</div>
+        <button class="btn" id="addLote">+ Novo lote</button>
+        <div class="list" id="lotesList"></div>
+      </aside>
 
-      <div class="options">
-        <label>Imagens por página:</label>
-        <select id="imgPerPage">
-          <option value="4">4 (2x2)</option>
-          <option value="6">6 (3x2)</option>
-          <option value="8" selected>8 (4x2)</option>
-          <option value="9">9 (3x3)</option>
-        </select>
-      </div>
+      <main class="main">
+        <div class="card">
+          <div class="title">
+            <div>
+              <strong id="loteTitle">Selecione um lote</strong>
+              <div class="hint" id="loteMeta">Nenhum lote ativo.</div>
+            </div>
+            <div class="tools">
+              <button class="btn ghost" id="renameLote" disabled>
+                Renomear
+              </button>
+              <button class="btn danger" id="deleteLote" disabled>
+                Excluir
+              </button>
+            </div>
+          </div>
 
-      <div class="progress">
-        <div id="progressBar" class="bar"></div>
-      </div>
+          <div class="row" style="align-items: flex-start; margin-bottom: 8px">
+            <input
+              id="fileInput"
+              type="file"
+              accept="image/*"
+              multiple
+              disabled
+            />
+            <button class="btn ghost" id="clearLote" disabled>Limpar</button>
+            <button class="btn" id="genPDF" disabled>Gerar PDF</button>
+            <button class="btn ghost" id="downloadZIP" disabled>
+              Baixar ZIP
+            </button>
+          </div>
 
-      <div class="drop" id="dropzone">Arraste e solte imagens aqui</div>
+          <div class="options">
+            <label>Imagens por página:</label>
+            <select id="imgPerPage">
+              <option value="4">4 (2x2)</option>
+              <option value="6">6 (3x2)</option>
+              <option value="8" selected>8 (4x2)</option>
+              <option value="9">9 (3x3)</option>
+            </select>
+          </div>
+
+          <div class="progress">
+            <div id="progressBar" class="bar"></div>
+          </div>
+
+          <div class="drop" id="dropzone">Arraste e solte imagens aqui</div>
+        </div>
+
+        <div class="card">
+          <div style="margin-bottom: 6px"><strong>Imagens do lote</strong></div>
+          <div class="hint" style="margin-bottom: 10px">
+            Clique no “×” para remover.
+          </div>
+          <div id="grid" class="grid"></div>
+        </div>
+      </main>
     </div>
 
-    <div class="card">
-      <div style="margin-bottom:6px"><strong>Imagens do lote</strong></div>
-      <div class="hint" style="margin-bottom:10px">Clique no “×” para remover.</div>
-      <div id="grid" class="grid"></div>
+    <!-- ⚙️ Modal de pré-visualização -->
+    <div id="previewModal" class="modal">
+      <div class="modal-content">
+        <span id="closePreview" class="close">&times;</span>
+        <iframe id="pdfPreview" frameborder="0"></iframe>
+      </div>
     </div>
-  </main>
-</div>
 
-<!-- ⚙️ Modal de pré-visualização -->
-<div id="previewModal" class="modal">
-  <div class="modal-content">
-    <span id="closePreview" class="close">&times;</span>
-    <iframe id="pdfPreview" frameborder="0"></iframe>
-  </div>
-</div>
+    <footer class="footer">
+      <p>
+        © 2025 — <strong>PrintJoiner</strong> | Desenvolvido com ❤️ por você
+      </p>
+    </footer>
 
-<footer class="footer">
-  <p>© 2025 — <strong>PrintJoiner</strong> | Desenvolvido com ❤️ por você</p>
-</footer>
-
-<script src="script.js"></script>
-</body>
+    <script src="script.js"></script>
+  </body>
 </html>
