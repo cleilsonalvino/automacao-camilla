@@ -298,7 +298,7 @@ function generatePDF(asZIP = false) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
   // Definição dinâmica do grid
-  const MARGIN = 10; // 10mm de margem
+  const MARGIN = 5; // 10mm de margem
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const usableWidth = pageWidth - MARGIN * 2;
@@ -319,7 +319,7 @@ function generatePDF(asZIP = false) {
     const slotY = MARGIN + r * slotHeight;
 
     // Usa a função de ajuda para calcular as dimensões corretas
-    // 'item.width' e 'item.height' vêm do Passo 2 (addFiles)
+    // 'item.width' e 'item.height' vêm do Passo 2  (addFiles)
     if(!item.width || !item.height) {
         console.warn("Item sem dimensões, pulando:", item.name);
         return; // Pula imagens quebradas ou de loads antigos
